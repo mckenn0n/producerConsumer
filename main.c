@@ -9,10 +9,7 @@ buffer_item buffer[BUFFER_SIZE];
 pthread_mutex_t mutex;
 sem_t empty;
 sem_t full;
-int timeToExit, pros, cons, i, run;
-// pthread_mutex_lock(&mutex);
-// pthread_mutex_unlock(&mutex);
-
+int timeToExit, pros, cons, i, run, p, c, pp, cc;
 int insert_item(buffer_item item) {
 	if (i < BUFFER_SIZE){
 		buffer[i++] = item;
@@ -47,6 +44,7 @@ void *producer(void *param) {
 		printf("Producer produced %d\n",item);
 		pthread_mutex_unlock(&mutex);
 		sem_post(&empty);
+		p++;
 	}
 	pthread_exit(0);
 }
@@ -65,43 +63,60 @@ void *consumer(void *param) {
 		printf("Consumer consumed %d\n",item);
 		pthread_mutex_unlock(&mutex);
 		sem_post(&full);
+		c++;
 	}	
 	pthread_exit(0);
 }
 
 int main(int argc, char *argv[]) {
-	i = 0;
-	/* 1. Get command line arguments argv[1],argv[2],argv[3] */
+	if(argc != 4){
+		printf("Wrong number of command line arguments.\n");
+		exit(0);
+	}
+	i, c, p, cc, pp= 0;
 	timeToExit = atoi(argv[1]);
 	pros = atoi(argv[2]);
 	cons = atoi(argv[3]);
-	/* 2. Initialize buffer */
+	
 	sem_init(&full, 0, BUFFER_SIZE);
 	sem_init(&empty, 0, 0);
 	pthread_mutex_init(&mutex, NULL);
-	/* 3. Create producer thread(s) */
+	
 	pthread_t producers[pros];
 	int x;
 	for (x = 0; x < pros; x++){
 		pthread_create(&producers[x], NULL, producer, 0);
+		pp++;
 	}
-	 // 4. Create consumer thread(s) 
+	
 	pthread_t consumers[cons];
 	int y;
 	for (y = 0; y < cons; y++){
 		pthread_create(&consumers[y], NULL, consumer, 0);
+		cc++;
 	}
-	/* 5. Sleep */
 	
+	printf("\t!!!Creating threads for %d seconds!!!\n", timeToExit);
 	sleep(timeToExit);
 	run = 0;
-	/* 6. Exit */
-
-	for (x = 0; x < pros; x++)
+	printf("\tWaiting on all threads to exit. Program will end soon.\n");
+	printf("\tJoining producers.\n");
+	for (x = 0; x < pros; x++){
 		pthread_join(producers[x], NULL);
+		if(pp == p){
+			break;
+		}
+	}
+	printf("\tAll producer threads exited.\n");
 
-	for (y = 0; y < cons; y++)
+	printf("\tJoining consumers.\n");
+	for (y = 0; y < cons; y++){
 		pthread_join(consumers[y], NULL);
+		if(c == cc){
+			break;
+		}
+	}
+	printf("\tAll consumer threads exited.\n");
 
 	pthread_mutex_destroy(&mutex);
 	sem_destroy(&full);
